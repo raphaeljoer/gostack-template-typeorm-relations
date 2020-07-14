@@ -3,6 +3,7 @@ import { getRepository, Repository } from 'typeorm';
 import IProductsRepository from '@modules/products/repositories/IProductsRepository';
 import ICreateProductDTO from '@modules/products/dtos/ICreateProductDTO';
 import IUpdateProductsQuantityDTO from '@modules/products/dtos/IUpdateProductsQuantityDTO';
+import AppError from '@shared/errors/AppError';
 import Product from '../entities/Product';
 
 interface IFindProducts {
@@ -27,7 +28,7 @@ class ProductsRepository implements IProductsRepository {
   }
 
   public async findByName(name: string): Promise<Product | undefined> {
-    const findProduct = this.ormRepository.findOne({
+    const findProduct = await this.ormRepository.findOne({
       where: { name },
     });
 
@@ -35,21 +36,48 @@ class ProductsRepository implements IProductsRepository {
   }
 
   public async findAllById(products: IFindProducts[]): Promise<Product[]> {
-    const findProducts = await this.ormRepository.findByIds(products);
-    return findProducts;
+    const orderProducts = products;
+    const productsInStock = await this.ormRepository.findByIds(orderProducts);
+
+    if (!productsInStock) {
+      throw new AppError('Products not found');
+    }
+
+    if (productsInStock.length < orderProducts.length) {
+      throw new AppError('Missing products');
+    }
+
+    return productsInStock;
   }
 
   public async updateQuantity(
     products: IUpdateProductsQuantityDTO[],
   ): Promise<Product[]> {
-    products.map(async product => {
-      const productQuantity = await this.ormRepository.findOne(product.id);
+    const orderProducts = products;
+    const productsInStock = await this.findAllById(orderProducts);
 
-      if (productQuantity && productQuantity.quantity >= product.quantity) {
-        productQuantity.quantity -= product.quantity;
-        await this.ormRepository.save(productQuantity);
+    if (!productsInStock) {
+      throw new AppError('Products not found');
+    }
+
+    const updateProductsQuantity = orderProducts.map(orderProduct => {
+      const productItemFounded = productsInStock.find(
+        prod => prod.id === orderProduct.id,
+      );
+
+      if (!productItemFounded) {
+        throw new AppError('Product not found');
       }
+
+      if (productItemFounded.quantity < orderProduct.quantity) {
+        throw new AppError(`Product sold out, id: ${productItemFounded.id}`);
+      }
+
+      productItemFounded.quantity -= orderProduct.quantity;
+      return productItemFounded;
     });
+
+    await this.ormRepository.save(updateProductsQuantity);
 
     const productsUpdated = await this.findAllById(products);
     return productsUpdated;

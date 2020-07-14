@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -25,8 +26,8 @@ class Order {
   customer_id: string;
 
   @OneToMany(() => OrdersProducts, orders_products => orders_products.order, {
-    eager: true,
     cascade: true,
+    eager: true,
   })
   order_products: OrdersProducts[];
 
