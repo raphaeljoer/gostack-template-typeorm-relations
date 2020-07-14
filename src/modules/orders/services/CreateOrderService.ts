@@ -75,7 +75,7 @@ class CreateOrderService {
       const findProd = findProducts.find(p => p.id === product_id);
 
       if (!findProd || quantity > findProd.quantity) {
-        throw new AppError('Product Sold out');
+        throw new AppError('Product sold out');
       }
 
       return {

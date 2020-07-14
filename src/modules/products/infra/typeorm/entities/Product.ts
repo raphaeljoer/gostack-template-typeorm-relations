@@ -17,15 +17,13 @@ class Product {
   @Column()
   name: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
-  @Column('int')
+  @Column('integer')
   quantity: number;
 
-  @OneToMany(() => OrdersProducts, order_products => OrdersProducts, {
-    cascade: true,
-  })
+  @OneToMany(() => OrdersProducts, orders_products => orders_products.product)
   order_products: OrdersProducts[];
 
   @CreateDateColumn()
